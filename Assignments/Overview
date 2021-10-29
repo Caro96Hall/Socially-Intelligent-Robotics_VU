@@ -1,0 +1,73 @@
+General overview
+The goal of this course-long, group assignment is to design and develop a prototype for a socially interactive NAO robot. 
+You will have the freedom to come up with your own project topic, which means you will have to be creative (think outside the box), but also extremely specific (topic must be narrow in scope, with most of the what’s and how’s figured out at an early stage). 
+You will be developing robot software (see robot software assignment below) as well as document your design (see design document assignment).
+We first provide some examples of project to illustrate the creativity and specificity that we are looking for.
+
+Example of a project that is both specific and creative
+
+Here are two exemplary final group design documents from last year that are of high quality. 
+This is for you to get a better understanding how a final project can look like and should function more of an inspiration to get a better feeling for the vast opportunities of projects.
+
+Example 1: Fabula: A Storytelling Robot for Motivating and Engaging Children in Primary Education
+
+
+The following examples are adjusted versions of the projects shown above suffering either from a lack of creativity or from specificity.
+
+Example project that is high on creativity but low on specificity
+
+A Nao robot that uses storytelling in the education setting to spark interest and encourage learning without specifying the subjects nor the target group (age range of the students) is a creative solution, but would lack from specificity. 
+In particular, one needs to take into consideration the motivation and characteristics of particular student groups, i.e. some age groups might be more curious or willing to interact with a Nao robot than others.
+
+Example project that is high on specificity but low on creativity
+
+A Nao robot that simply supports primary students with revising vocabulary and/or counting the numbers up to 100, is specific but lacks creativity. 
+In particular, this project would not make full use of the various capabilities of the Nao robot to socially interact with its target group. 
+
+
+Multidisciplinary Collaboration
+The field of Social Robotics is multidisciplinary. Often the best solutions in this field are solutions that combine and incorporate knowledge from different domains. 
+Throughout this course, each group will work together with two theatre students from Utrecht University who take part in the course Expanding Performance. 
+You will (in week 46, course week 3) present your use case and what you have done so far to the theatre students. 
+The theatre students will reflect on your use case presentation and create a mood board to provide inspiration, input, and feedback (beginning of week 47, course week 4). 
+You are asked to reflect on their mood board and think about what you can do to improve your design with their input. 
+It is up to you whether you will incorporate some of their ideas into your design or not. At the end of the same week, you will create and share a demo video of your prototype robot with the theatre students to present your intermediate results. 
+The theatre students will review your video from an audience perspective and provide you with a review (in week 48) that you can use to improve your design.
+
+Use Case Presentation (Deadline Tuesday 10-11)
+You need to create a use case presentation (slides) about your project. 
+The presentation should explain the main ideas and goals that you have for designing your socially interactive robot. 
+You should explain the context, design scenario, target audience, and main aims and use case. Think about using pictures to illustrate your ideas.
+
+You need to add your presentation to your group’s Google folder. 
+
+You should also share the presentation with another group and with the UU theatre students by mailing them a url link which provides them with viewing access (also, add your TA in the cc: of both of these mails). 
+The deadline for sending these emails is Tuesday 10-11.
+
+On Wednesday 11-11 you will have three sessions:
+
+14:00-14:30: A peer review session in which you or another group will present their use case presentation and feedback will be provided on this presentation by the group who is not presenting.
+
+14:45-15:15: A second peer review session in which you will be joined by yet another group but roles are reversed: if you already presented your use case, then you will take on the reviewing role, or vice versa.
+
+15:30-16:30: A 20 min slot will be assigned to your group to meet your two theatre student collaborators from Utrecht University (UU).
+You will present your main ideas and the use case you have been working on to the theatre students.
+
+Robot Software (Deadline Friday 4-12)
+There are two important software development milestones that you will need to meet:
+
+In week 4: your first working prototype should be ready to create a demo video;
+
+In week 6: your final socially interactive robot should be ready for evaluation.
+
+
+Below we discuss what is expected from you and make several suggestions on how to make the most out of the practical sessions each week throughout the course. 
+There will be 7 practical sessions, in week 8 you will present your project to other groups. 
+It is very important to use the practical sessions as effectively as possible because they only provide you with limited access to the robot. 
+You should try to focus on those project tasks for which you need access to a robot during the practical sessions. 
+Find and agree on time slots other than those at which your practical session has been scheduled to work on all other project tasks (e.g., discuss design with your group, organize and assign tasks, document writing, etc.).
+
+During the project you will iteratively improve your design and robot software. 
+Your design should inform your software development and your robot software should correspond with the design documented in your design document. 
+This means you will need to continuously update and improve your robot software as well as your design document based upon new insights, input, and feedback you receive.
+
