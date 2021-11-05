@@ -1,0 +1,5 @@
+redis~=3.5
+hiredis~=1.1
+transitions~=0.8
+protobuf~=3.19
+simplejson~=3.17
