@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="nao">
+
+	<!--
+	<emotion>
+		<valence>-0.75</valence>
+		<arousal>-0.3</arousal>
+	</emotion>
+
+	-->
+
+	<emotion name="neutral">
+	</emotion>
+	<repeat> 1 </repeat>
+
+	<head>
+
+		<state>
+			<joint name = "HeadPitch"> -0.671951762 </joint>
+			<joint name = "LShoulderPitch"> -0.574213324 </joint>
+			<joint name = "RShoulderPitch"> -0.574213324 </joint>
+		</state>
+
+        <state name = "pivot">
+			<joint name = "HeadPitch"> -0.671951762 </joint>
+			<joint name = "LShoulderPitch"> -0.374213324 </joint>
+			<joint name = "RShoulderPitch"> -0.374213324 </joint>
+		</state>
+
+
+	</head>
+
+	<speed> normal </speed>
+
+</robot>
