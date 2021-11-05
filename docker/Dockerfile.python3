@@ -1,0 +1,8 @@
+FROM python:3.9.7
+
+RUN apt-get update && apt-get install -y ffmpeg libsm6 libxext6 zbar-tools && apt-get clean && rm -rf /tmp/* /var/tmp/*
+
+RUN pip install --no-cache-dir --upgrade --prefer-binary redis~=3.5 hiredis~=1.1 simplejson~=3.17 opencv-python-headless~=4.5 Pillow~=8.4 numpy~=1.21 scipy~=1.7 pyroomacoustics~=0.5 Cython~=0.29 pybind11~=2.8 coronacheck-tools~=3.0
+
+COPY cbsr/common_python /tmp
+RUN cd /tmp && python setup.py install && rm -rf *

@@ -1,0 +1,504 @@
+---
+##
+## -------------------------
+## |  D E V I L S T A C K  |
+## -------------------------
+##
+
+version: '2.3'
+
+################################################################################
+# SERVICES
+################################################################################
+
+services:
+  # ------------------------------------------------------------
+  # Bind (DNS Server)
+  # ------------------------------------------------------------
+  bind:
+    image: cytopia/bind:0.15
+    hostname: bind
+    restart: always
+    ports:
+      - "1053:53/tcp"
+      - "1053:53/udp"
+
+    environment:
+      # Debug?
+      - DEBUG_ENTRYPOINT=${DEBUG_COMPOSE_ENTRYPOINT}
+      # Forwarding
+      - DNS_FORWARDER=${BIND_DNS_RESOLVER:-8.8.8.8,8.8.4.4}
+      # Security
+      - DNSSEC_VALIDATE=${BIND_DNSSEC_VALIDATE:-no}
+      # Time settings
+      - TTL_TIME=${BIND_TTL_TIME}
+      - REFRESH_TIME=${BIND_REFRESH_TIME}
+      - RETRY_TIME=${BIND_RETRY_TIME}
+      - EXPIRY_TIME=${BIND_EXPIRY_TIME}
+      - MAX_CACHE_TIME=${BIND_MAX_CACHE_TIME}
+      # Query log
+      - DOCKER_LOGS=${BIND_LOG_DNS_QUERIES}
+
+    dns:
+      - 127.0.0.1
+
+    # MacOS and Windows have this by default, this hack also allows it for Linux
+    extra_hosts:
+      docker.for.lin.host.internal: 172.16.238.1
+      docker.for.lin.localhost: 172.16.238.1
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.100
+
+  # ------------------------------------------------------------
+  # PHP
+  # ------------------------------------------------------------
+  php:
+    image: cbsr_php_fpm
+    build:
+      context: .
+      dockerfile: Dockerfile.php74
+    hostname: php
+    env_file:
+      - ./.env
+
+    environment:
+      # Debug/Logging
+      - DEBUG_ENTRYPOINT=${DEBUG_COMPOSE_ENTRYPOINT}
+      - DEBUG_COMPOSE_ENTRYPOINT
+      - DOCKER_LOGS
+      # Tools
+      - COMPOSER_MEMORY_LIMIT=-1
+      # UserID and GroupID
+      - NEW_UID
+      - NEW_GID
+      # Adjust timezone
+      - TIMEZONE
+      # Enable/Disable PHP Modules
+      - ENABLE_MODULES=${PHP_MODULES_ENABLE}
+      - DISABLE_MODULES=${PHP_MODULES_DISABLE}
+      # Mail-catching
+      - ENABLE_MAIL=${PHP_MAIL_CATCH_ALL:-2}
+      # Enable 127.0.0.1 Port-forwarding
+      - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,443:httpd:443,6379:redis:6379
+
+    dns:
+      - 172.16.238.100
+
+    # MacOS and Windows have this by default, this hack also allows it for Linux
+    extra_hosts:
+      docker.for.lin.host.internal: 172.16.238.1
+      docker.for.lin.localhost: 172.16.238.1
+
+    ports:
+      - "8080:8080"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.10
+
+    volumes:
+      # Mount custom intranet
+      - ./data/www:/var/www/default:rw${MOUNT_OPTIONS}
+      # Mount logs
+      - ./log/php:/var/log/php:rw${MOUNT_OPTIONS}
+      # Mount Mail directory
+      - ./mail:/var/mail:rw${MOUNT_OPTIONS}
+      # Mount user-defined *.ini files in order
+      # to overwrite the default PHP.ini configuration
+      - ./cfg/php-ini:/etc/php-custom.d:ro${MOUNT_OPTIONS}
+      # Mount user-defined PHP-FPM *.conf files in order
+      # to overwrite the default PHP-FPM configuration
+      - ./cfg/php-fpm:/etc/php-fpm-custom.d:ro${MOUNT_OPTIONS}
+      # Mount user-defined *.so files in order
+      # to load custom PHP modules
+      - ./mod/php-fpm:/usr/lib64/php/custom-modules:ro${MOUNT_OPTIONS}
+      # Mount user-defined PHP-FPM startup *.sh scripts
+      - ./cfg/php-startup:/startup.1.d:rw${MOUNT_OPTIONS}
+      - ./autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      # Mount user-defined bash config
+      - ./bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
+      # Certificate Authority public key
+      - ./ca:/ca:rw${MOUNT_OPTIONS}
+      # Users SSH directory (read-only)
+      - ${HOST_PATH_SSH_DIR}:/home/devilbox/.ssh:ro${MOUNT_OPTIONS}
+      # CBSR
+      - ./cbsr:/opt/cbsr:rw${MOUNT_OPTIONS}
+
+    depends_on:
+      - bind
+      - redis
+
+  # ------------------------------------------------------------
+  # Web Server (Wizard-of-Oz)
+  # ------------------------------------------------------------
+  wizard:
+    image: devilbox/apache-2.4:${HTTPD_SERVER}
+    hostname: httpd
+
+    environment:
+      # Debug/Logging
+      - DEBUG_ENTRYPOINT=${DEBUG_COMPOSE_ENTRYPOINT}
+      - DEBUG_RUNTIME=${DEBUG_COMPOSE_ENTRYPOINT}
+      - DOCKER_LOGS
+      # Adjust timezone
+      - TIMEZONE
+      # UserID and GroupID
+      - NEW_UID
+      - NEW_GID
+      # Default vhost
+      - MAIN_VHOST_ENABLE=1
+      - MAIN_VHOST_STATUS_ENABLE=1
+      - MAIN_VHOST_STATUS_ALIAS=/devilbox-httpd-status
+      - MAIN_VHOST_SSL_TYPE=${HTTPD_VHOST_SSL_TYPE:-both}
+      - MAIN_VHOST_SSL_GEN=1
+      - MAIN_VHOST_SSL_CN=${DEVILBOX_SSL_CN:-localhost}
+      # PHP-FPM Remote Server
+      - COMPAT=${PHP_SERVER}
+      - PHP_FPM_ENABLE=1
+      - PHP_FPM_SERVER_ADDR=172.16.238.10
+      - PHP_FPM_SERVER_PORT=9000
+      - PHP_FPM_TIMEOUT=${HTTPD_TIMEOUT_TO_PHP_FPM:-180}
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.11
+
+    volumes:
+      # Mount custom intranet
+      - ./data/www:/var/www/default:rw${MOUNT_OPTIONS}
+      # Mount custom web server config directory
+      - ./cfg/apache:/etc/httpd-custom.d:rw${MOUNT_OPTIONS}
+      # Mount custom vhost-templates
+      - ./cfg/vhost-gen:/etc/vhost-gen.d:rw${MOUNT_OPTIONS}
+      # Mount logs
+      - ./log/httpd:/var/log/apache-2.4:rw${MOUNT_OPTIONS}
+      # Certificate Authority public key
+      - ./ca:/ca:rw${MOUNT_OPTIONS}
+
+    depends_on:
+      - bind
+      - php
+      - redis
+
+  # ------------------------------------------------------------
+  # Redis
+  # ------------------------------------------------------------
+  redis:
+    image: redis:${REDIS_SERVER}
+    hostname: redis
+    user: "${NEW_UID}:${NEW_GID}"
+
+    # Apply custom arguments to redis startup
+    command: redis-server ${REDIS_ARGS:- }
+    environment:
+      - REDIS_ARGS=${REDIS_ARGS:- }
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.12
+
+    volumes:
+      - ./cfg/redis:/usr/local/etc/redis:rw${MOUNT_OPTIONS}
+
+  # ------------------------------------------------------------
+  # Face Recognition service
+  # ------------------------------------------------------------
+  face_recognition:
+    image: face_recognition
+    build:
+      context: .
+      dockerfile: Dockerfile.facerecognition
+    hostname: face_recognition
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /face_recognition
+    command: python2 face_recognition_factory.py
+    volumes:
+      - ./cbsr/face_recognition:/face_recognition:rw${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.13
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # People Detection service
+  # ------------------------------------------------------------
+  people_detection:
+    image: face_recognition
+    build:
+      context: .
+      dockerfile: Dockerfile.facerecognition
+    hostname: people_detection
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /people_detection
+    command: python2 people_detection_factory.py
+    volumes:
+      - ./cbsr/people_detection:/people_detection:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.14
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # Dialogflow service
+  # ------------------------------------------------------------
+  dialogflow:
+    image: eclipse-temurin:${JAVA}
+    hostname: dialogflow
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /dialogflow
+    command: java -jar audio-dialogflow.jar
+    volumes:
+      - ./cbsr/dialogflow:/dialogflow:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.15
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # Web Server service
+  # ------------------------------------------------------------
+  webserver:
+    image: eclipse-temurin:${JAVA}
+    hostname: webserver
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /webserver
+    command: java -jar webserver.jar
+    volumes:
+      - ./cbsr/webserver:/webserver:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.16
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # Emotion Detection service
+  # ------------------------------------------------------------
+  emotion_detection:
+    image: face_recognition
+    build:
+      context: .
+      dockerfile: Dockerfile.facerecognition
+    hostname: emotion_detection
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /emotion_detection
+    command: python2 emotion_detection_factory.py
+    volumes:
+      - ./cbsr/emotion_detection:/emotion_detection:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.17
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # Robot Memory service
+  # ------------------------------------------------------------
+  robot_memory:
+    image: python3
+    build:
+      context: .
+      dockerfile: Dockerfile.python3
+    hostname: robot_memory
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /robot_memory
+    command: python robot_memory_factory.py
+    volumes:
+      - ./cbsr/robot_memory:/robot_memory:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.18
+
+    depends_on:
+      - redis
+  
+  # ------------------------------------------------------------
+  # Stream Video service
+  # ------------------------------------------------------------
+  stream_video:
+    image: eclipse-temurin:${JAVA}
+    hostname: stream_video
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /stream_video
+    command: java -jar stream-video.jar
+    volumes:
+      - ./cbsr/stream_video:/stream_video:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    ports:
+      - "8002:8002"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.19
+
+    depends_on:
+      - redis
+  
+  # ------------------------------------------------------------
+  # Stream Audio service
+  # ------------------------------------------------------------
+  stream_audio:
+    image: eclipse-temurin:${JAVA}
+    hostname: stream_audio
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /stream_audio
+    command: java -jar stream-audio.jar
+    volumes:
+      - ./cbsr/stream_audio:/stream_audio:ro${MOUNT_OPTIONS}
+      - ./data:/data:rw${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    ports:
+      - "8003:8003"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.20
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # Beamforming service
+  # ------------------------------------------------------------
+  beamforming:
+    image: python3
+    build:
+      context: .
+      dockerfile: Dockerfile.python3
+    hostname: beamforming
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /beamforming
+    command: python beamforming_factory.py
+    volumes:
+      - ./cbsr/beamforming:/beamforming:ro${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.21
+
+    depends_on:
+      - redis
+
+  # ------------------------------------------------------------
+  # Corona Checker service
+  # ------------------------------------------------------------
+  coronachecker:
+    image: python3
+    build:
+      context: .
+      dockerfile: Dockerfile.python3
+    hostname: coronachecker
+    user: "${NEW_UID}:${NEW_GID}"
+    env_file:
+      - ./.env
+
+    working_dir: /coronacheck
+    command: python corona_check_factory.py
+    volumes:
+      - ./cbsr/corona_check:/coronacheck:rw${MOUNT_OPTIONS}
+
+    tty: true
+    stdin_open: false
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.22
+
+    depends_on:
+      - redis
+
+################################################################################
+# NETWORK
+################################################################################
+
+networks:
+  app_net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1

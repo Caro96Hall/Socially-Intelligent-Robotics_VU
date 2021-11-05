@@ -1,0 +1,47 @@
+FROM python:2.7.18-slim
+
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    gfortran \
+    git \
+    wget \
+    curl \
+    graphicsmagick \
+    libgraphicsmagick1-dev \
+    libatlas-base-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libgtk2.0-dev \
+    libjpeg-dev \
+    liblapack-dev \
+    libswscale-dev \
+    pkg-config \
+    python-dev \
+    python-numpy \
+    software-properties-common \
+    zip \
+    && apt-get clean && rm -rf /tmp/* /var/tmp/*
+
+RUN cd ~ && \
+    mkdir -p dlib && \
+    git clone -b 'v19.22' --single-branch https://github.com/davisking/dlib.git dlib/ && \
+    cd dlib/ && \
+    python2 setup.py install
+
+RUN pip2 install --no-cache-dir --upgrade --prefer-binary \
+    redis~=3.5 \
+	hiredis~=1.1 \
+	opencv-python-headless~=4.2.0 \
+	numpy~=1.16 \
+	imutils~=0.5 \
+	Pillow~=6.2 \
+	face_recognition~=1.3 \
+	tensorflow~=2.1 \
+	keras~=2.3.0 \
+	pandas~=0.24
+
+COPY cbsr/common_python /tmp
+RUN cd /tmp && python setup.py install && rm -rf *
