@@ -1,0 +1,23 @@
+<script type="text/javascript">
+$(function () {
+    $('#signupForm').on('submit', function() {
+        $.post('signup', $(this).serialize(),
+                function(response){$('#popupContent').html('<pre>'+response+'</pre>');$('#popup').modal();});
+        return false;
+    });
+});
+</script>
+<h3>New User</h3>
+<form id="signupForm" class="mt-4">
+	<div class="form-group">
+    	<label for="newUser">Username:</label>
+      	<input type="text" class="form-control" name="newUser" aria-describedby="newUserHelp">
+      	<small id="newUserHelp" class="form-text text-muted">Please enter an alphanumeric username of at least 4 chars.</small>
+    </div>
+    <div class="form-group">
+    	<label for="newPass">Password:</label>
+    	<input type="password" class="form-control" name="newPass" aria-describedby="newPassHelp">
+    	<small id="newPassHelp" class="form-text text-muted">Please enter a password of at least 8 chars.</small>
+  	</div>
+  	<button type="submit" class="btn btn-primary">Register</button>
+</form>

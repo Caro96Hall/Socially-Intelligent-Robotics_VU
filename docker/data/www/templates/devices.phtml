@@ -1,0 +1,53 @@
+<script type="text/javascript">
+var username = 'default';
+var devices = [];
+var socket = null;
+$(function () {
+    $.get('devices', [], function(response) {
+        var devices = response.split("\n");
+        var form = '<fieldset>';
+        form += '<div class="form-group"><input type="checkbox" class="form-check-input" id="select-all"></div>';
+        $.each(devices, function(i,device) {
+            if (device) {
+                form += '<div class="form-group">';
+    			form += '<input type="checkbox" class="form-check-input" name="devices[]" value="'+device+'">';
+    			form += device;
+    			form += '</div>';
+            }
+        });
+        form += '<button type="submit" class="btn btn-primary mt-1">Connect</button>';
+        form += '</fieldset>';
+        $('#deviceForm').html(form);
+        $('#select-all').on('click', function() {
+        	$('#deviceForm input:checkbox').prop('checked', this.checked)
+        });
+    });
+    $('#deviceForm').on('submit', function() {
+        $.post('devices', $(this).serialize(), function(response){
+            devices=JSON.parse(response);
+            if(false /*'logger' in devices*/) {
+            	socket = new WebSocket('ws://' + window.location.hostname + ':8080');
+            	socket.onopen = function() {
+                	console.log(username+'-'+devices['logger']);
+            		socket.send(username+'-'+devices['logger']);
+            	};
+            	socket.onmessage = function(event) {
+            		console.log(event);
+            	}
+            	socket.onerror = function(error) {
+            		console.log(error);
+            	}
+            }
+            $('#devices').remove();
+            $('#control').show();
+            $('#favourites').show();
+        });
+        return false;
+    });
+});
+$(window).on('unload', function() {
+	if( socket ) socket.close();
+});
+</script>
+<h3>Devices</h3>
+<form id="deviceForm" class="mt-4"></form>

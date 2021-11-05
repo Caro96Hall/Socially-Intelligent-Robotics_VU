@@ -1,0 +1,78 @@
+<script type="text/javascript">
+$(function () {
+	$('#customFile').on('change', function(e) {
+		var files = e.target.files;
+		if(files.length < 1) {
+			return false;
+		}
+		var file = files.item(0);
+		$('#customFileLabel').html(file.name);
+		var fr = new FileReader();
+		fr.onload = function(e) {
+			var config = JSON.parse(e.target.result);
+			var favs = $('#favs');
+			favs.off();
+			favs.empty();
+			$.each(config, function(i, entry) {
+				if(entry.type === 'header') {
+					var header = '<h6 class="w-100 mt-1">'+entry.text+'</h6>';
+					favs.append(header);
+				} else if(entry.type === 'button' || entry.type === 'field') {
+					var form = '<form id="fav'+i+'">';
+					var isField = (entry.type === 'field');
+					if(isField) form += '<input type="text" class="form-control">';
+    				var buttonStyle = ('style' in entry) ? entry.style : 'primary';
+    				form += '<button type="submit" class="btn btn-'+buttonStyle+' ml-1 mb-1">'+entry.name+'</button>';
+    				favs.append(form+'</form>');
+    				$('#fav'+i).on('click', ':submit', function() {
+        				var c = 0;
+        				while(true) {
+    						var action = '';
+            				if(c == 0) { 
+                				action = entry.action;
+            				} else if(c > 0 && ('action_'+c) in entry) {
+                				action = entry['action_'+c];
+            				} else {
+                				break;
+            				}
+    
+        					var type = 'robot';
+        					if(action.startsWith('action_say') || action.startsWith('action_speech') ||
+        	    				action.startsWith('audio_') || action === 'action_stop_talking') {
+        						type = 'speaker';
+        					} else if(action.startsWith('session_')) {
+        						type = 'logger';
+        					} else if(action === 'render_html') {
+        						type = 'browser';
+        					}
+
+        					var data = '';
+        					if(isField) data = $(this).prev().val();
+        					else if(c == 0 && 'data' in entry) data = entry.data;
+        					else if(c > 0 && ('data_'+c) in entry) data = entry['data_'+c];
+    
+        					$.post('command', {id:(username+'-'+devices[type]), cmd:action, data:data});
+        					if(isField) $(this).prev().val('');
+    
+        					var shouldLog = ('log' in entry) ? entry.log : true;
+        					if(type !== 'logger' && shouldLog && 'logger' in devices)
+            					$.post('command', {id:(username+'-'+devices['logger']), cmd:'session_log', data:action+'|'+data});
+        					c++;
+        				}
+
+    					return false;
+    				});
+				}
+			});
+		}
+		fr.readAsText(file);
+		$(this).val(null);
+	});
+});
+</script>
+<h3>Favourites</h3>
+<div class="custom-file mb-3">
+  <input type="file" class="custom-file-input" id="customFile" accept=".json">
+  <label class="custom-file-label" for="customFile" id="customFileLabel">Config</label>
+</div>
+<div id="favs" class="form-inline"></div>

@@ -1,0 +1,130 @@
+<script type="text/javascript">
+var audioPlayer = null, audioSocket = null, videoObject = null, videoSocket = null;
+$(function () {
+    $('#startFeed').on('click', function() {
+        var videoDevice = username+'-'+devices['cam'];
+	   	var videoFeed = $('#feed');
+	   	var videoSocket = new WebSocket('ws://127.0.0.1:8002');
+	   	videoSocket.binaryType = 'arraybuffer';
+	   	videoSocket.onopen = function() {
+	   		videoSocket.send(videoDevice);
+	        $.post('start_cam_feed', {id:videoDevice});
+		};
+		videoSocket.onmessage = function(event) {
+	    	var imageData = new Uint8Array(event.data);
+	    	var imageBlob = new Blob([imageData.buffer]);
+	    	if(videoObject) URL.revokeObjectURL(videoObject)
+	    	videoObject = URL.createObjectURL(imageBlob);
+	    	videoFeed.attr('src', videoObject);
+	   	};
+	   	videoSocket.onerror = function(error) {
+			if(error.message) alert(error.message);
+		};
+        var audioDevice = username+'-'+devices['mic'];
+    	audioPlayer = new PCMPlayer({sampleRate: 16000, flushingTime: 50});
+	   	var audioSocket = new WebSocket('ws://127.0.0.1:8003');
+	   	audioSocket.binaryType = 'arraybuffer';
+	   	audioSocket.onopen = function() {
+	   		audioSocket.send(audioDevice);
+	        $.post('start_mic_feed', {id:audioDevice});
+		};
+	   	audioSocket.onmessage = function(event) {
+	    	var audioData = new Uint8Array(event.data);
+	    	if(audioPlayer) audioPlayer.feed(audioData);
+	   	};
+	   	audioSocket.onerror = function(error) {
+			if(error.message) alert(error.message);
+		};
+    });
+    $('#stopFeed').on('click', function() {
+        $.post('stop_cam_feed', {id:(username+'-'+devices['cam'])});
+    	if(videoSocket) { videoSocket.close(); videoSocket = null; }
+    	if(videoObject) { URL.revokeObjectURL(videoObject); videoObject = null; }
+    	setTimeout(function(){$('#feed').attr('src', '')}, 1000);
+        $.post('stop_mic_feed', {id:(username+'-'+devices['mic'])});
+    	if(audioSocket) { audioSocket.close(); audioSocket = null; }
+    	if(audioPlayer) { audioPlayer.destroy(); audioPlayer = null; }
+    });
+    var idle = false;
+    $('#toggleIdle').on('click', function() {
+        var robotId = username+'-'+devices['robot'];
+        if(idle) {
+    		$.post('command', {id:robotId, cmd:'action_idle', data:'false'});
+			idle = false;
+        } else {
+    		$.post('command', {id:robotId, cmd:'action_idle', data:'true'});
+			idle = true;
+        }
+    });
+    $('#sayForm').on('click', ':submit', function() {
+        var form = $('#sayForm');
+        var name = $(this).val();
+        var data = form.serializeArray();
+        if(name.startsWith('browser')) {
+            var html = '<center><h1>'+data[0].value+'</h1></center>';
+            $.post('command', {id:(username+'-'+devices['browser']), cmd:'render_html', data:html});
+        } else {
+        	$.post('command', {id:(username+'-'+devices['speaker']), cmd:('action_'+name), data:(data[0].value)});
+        }
+        form.trigger('reset');
+        return false;
+    });
+    var allGestures = {};
+    $.getJSON('gestures.json', function(data) {
+		allGestures = data;
+    });
+    $('#gesture').on('click', function() {
+        var popup = $('#popup');
+        var content = $('#popupContent');
+        $.each(allGestures, function(name,value) {
+			content.append('<button type="submit" value="'+value+'" class="btn btn-primary ml-1 mb-1">'+name+'</button>');
+        });
+        content.on('click', ':submit', function() {
+            var anim = $(this).val();
+        	$.post('command', {id:(username+'-'+devices['robot']), cmd:'action_gesture', data:anim});
+        	popup.modal('hide');
+        });
+        popup.on('hidden.bs.modal', function() {
+        	content.off();
+            content.empty();
+        });
+    	popup.modal('show');
+    });
+    var allColours = {'White':'FFFFFF', 'Red':'FF0000', 'Green':'008000', 'Blue':'0000FF', 'Yellow':'FFFF00', 
+    	    'Magenta':'FF00FF', 'Cyan':'00FFFF', 'GreenYellow':'ADFF2F', 'Rainbow':'F0F0F0'};
+    $('#eyeColour').on('click', function() {
+        var popup = $('#popup');
+        var content = $('#popupContent');
+        $.each(allColours, function(name,hex) {
+			content.append('<button type="submit" value="'+name+'" class="btn btn-primary ml-1 mb-1" style="color:#202020;background-color:#'+hex+';">'+name+'</button>');
+        });
+        content.on('click', ':submit', function() {
+            var colour = $(this).val().toLowerCase();
+        	$.post('command', {id:(username+'-'+devices['robot']), cmd:'action_eyecolour', data:colour});
+        	popup.modal('hide');
+        });
+        popup.on('hidden.bs.modal', function() {
+            content.off();
+            content.empty();
+        });
+    	popup.modal('show');
+    });
+});
+</script>
+<center><h3>Control</h3></center>
+<div class="form-inline mb-3">
+	<img id="feed" class="w-100 mb-3">
+  	<button id="startFeed" type="submit" class="btn btn-success ml-1">Start feed</button>
+  	<button id="stopFeed" type="submit" class="btn btn-danger ml-1">Stop feed</button>
+  	<button id="toggleIdle" type="submit" class="btn btn-warning ml-5">Toggle idle</button>
+  	<button id="eyeColour" type="submit" class="btn btn-secondary ml-auto">Eye colour</button>
+</div>
+<div class="float-right">
+  	<button id="gesture" type="submit" class="btn btn-secondary">Gesture</button>
+</div>
+<form id="sayForm" class="form-inline mb-3">
+	<div class="form-group"><input type="text" class="form-control" name="say"></div>
+  	<button type="submit" value="say" class="btn btn-primary ml-1">Say</button>
+  	<button type="submit" value="say_animated" class="btn btn-primary ml-1">Say (anim)</button>
+  	<button type="submit" value="browser_text" class="btn btn-info ml-1">Show (browser)</button>
+</form>
